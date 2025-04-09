@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Model artifacts 
+models/tf_checkpoint/
+models/lr_model/
+models/tf_checkpoint/*
+models/lr_model/*
+!models/.gitkeep 
+
+.DS_Store
+Thumbs.db
+
+.idea/
+.vscode/
+
+# Virtual environment folders 
+venv/
+env/
+.env/
+*.env
+
+# Build artifacts 
+dist/
+build/
+*.egg-info/
+
+*.log

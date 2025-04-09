@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Receipt Predictions</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #007bff; 
+            --secondary-color: #6c757d;
+            --light-gray: #f8f9fa;
+            --dark-gray: #343a40;
+            --success-color: #28a745; 
+            --danger-color: #dc3545;
+            --border-color: #dee2e6;
+            --text-color: #212529;
+            --bg-color: #ffffff;
+            --hover-color: #0056b3;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 20px;
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--bg-color);
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+            width: 95%;
+            max-width: 1000px;
+        }
+
+        h1 {
+            color: var(--dark-gray);
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #fdfdfd;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .control-group label {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+
+        select, button {
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            font-size: 1em;
+            background-color: var(--bg-color);
+            min-width: 150px;
+        }
+
+        button#predictButton {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            align-self: flex-end;
+            min-width: auto;
+            padding: 10px 25px;
+        }
+
+        button#predictButton:hover {
+            background-color: var(--hover-color);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        button#predictButton:disabled {
+            background-color: var(--secondary-color);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #resultsArea {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            width: 100%;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            min-height: 350px;
+            visibility: hidden;
+        }
+
+        #resultsArea.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #tableContainer, #chartContainer, #comparisonChartContainer {
+            flex: 1;
+            min-width: 350px;
+            padding: 15px;
+            background-color: #fdfdfd;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin: 10px;
+        }
+        #chartContainer, #comparisonChartContainer {
+             position: relative;
+             height: 350px;
+             max-width: 600px;
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 5px;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+         td:last-child {
+            text-align: right;
+            font-weight: 500;
+        }
+        #predictionTable thead th:nth-child(2),
+        #predictionTable tbody td:nth-child(2),
+        #predictionTable thead th:nth-child(3),
+        #predictionTable tbody td:nth-child(3) {
+             text-align: right;
+        }
+
+
+        #errorMessage {
+            color: var(--danger-color);
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px auto;
+            display: none;
+            text-align: center;
+            word-wrap: break-word;
+            width: 80%;
+            max-width: 700px;
+        }
+
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.6em; }
+            .controls { flex-direction: column; gap: 15px; align-items: stretch; }
+            select, button#predictButton { width: 100%; }
+            #resultsArea { flex-direction: column; align-items: center; }
+            #tableContainer, #chartContainer, #comparisonChartContainer {
+                 width: 95%;
+                 max-width: 500px;
+                 margin: 10px 0;
+            }
+            #chartContainer, #comparisonChartContainer { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Fetch Receipt Predictions ({{ year }})</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="modelSelect">Select Model:</label>
+                <select id="modelSelect">
+                    <option value="mlp" selected>TensorFlow MLP</option>
+                    <option value="lr">Linear Regression</option>
+                    <option value="comparison">Compare Models</option>
+                </select>
+            </div>
+             <div class="control-group">
+                <label for="monthSelect">Select Month:</label>
+                <select id="monthSelect">
+                    {% for month_val in months %}
+                    <option value="{{ month_val }}">{{ month_val.replace('-', ' / ') | replace('all', 'All Months') | title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+             <div class="control-group">
+                <label for="chartTypeSelect">Select Chart Type:</label>
+                <select id="chartTypeSelect">
+                    <option value="bar" selected>Bar Chart</option>
+                    <option value="line">Line Chart</option>
+                </select>
+            </div>
+            <button id="predictButton">Get Predictions</button>
+        </div>
+
+        <div id="loader" class="loader"></div>
+        <div id="errorMessage"></div>
+
+        <div id="resultsArea">
+            <div id="tableContainer" style="display: none;">
+                <h2>Prediction Table</h2>
+                <table id="predictionTable">
+                    <thead><!-- Dynamically filled --></thead>
+                    <tbody><!-- Dynamically filled --></tbody>
+                </table>
+            </div>
+            <div id="chartContainer" style="display: none;">
+                 <h2>Prediction Chart</h2>
+                 <canvas id="predictionChart"></canvas>
+            </div>
+            <div id="comparisonChartContainer" style="display: none;">
+                <h2>Model Comparison Chart</h2>
+                <canvas id="comparisonChart"></canvas> 
+        </div>
+    </div>
+
+    <script>
+        const predictButton = document.getElementById('predictButton');
+        const modelSelect = document.getElementById('modelSelect');
+        const monthSelect = document.getElementById('monthSelect');
+        const chartTypeSelect = document.getElementById('chartTypeSelect');
+
+        const resultsArea = document.getElementById('resultsArea');
+        const predictionTable = document.getElementById('predictionTable');
+        const tableHeader = predictionTable.querySelector('thead');
+        const tableBody = predictionTable.querySelector('tbody');
+        const tableContainer = document.getElementById('tableContainer');
+
+        const chartCanvas = document.getElementById('predictionChart');
+        const chartContainer = document.getElementById('chartContainer');
+        const comparisonChartCanvas = document.getElementById('comparisonChart');
+        const comparisonChartContainer = document.getElementById('comparisonChartContainer');
+
+        const errorMessageDiv = document.getElementById('errorMessage');
+        const loader = document.getElementById('loader');
+
+        let predictionChart = null;
+        let comparisonChart = null;
+        let currentVisibleChartData = null; 
+
+        const primaryColor = '#007bff'; 
+        const successColor = '#28a745'; 
+        const primaryColorBar = 'rgba(0, 123, 255, 0.7)'; 
+        const successColorBar = 'rgba(40, 167, 69, 0.7)';  
+        const primaryColorLineFill = 'rgba(0, 123, 255, 0.1)';
+        const successColorLineFill = 'rgba(40, 167, 69, 0.1)';
+
+
+        predictButton.addEventListener('click', fetchPredictions);
+        chartTypeSelect.addEventListener('change', updateVisibleChartType);
+
+        async function fetchPredictions() {
+            setLoadingState(true);
+            const selectedModel = modelSelect.value;
+            const selectedMonth = monthSelect.value;
+            const selectedChartType = chartTypeSelect.value;
+
+            try {
+                const response = await fetch('/get_predictions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model_type: selectedModel,
+                        selected_month: selectedMonth
+                    })
+                });
+
+                let responseData;
+                try { responseData = await response.json(); }
+                catch (e) { const txt = await response.text(); throw new Error(`Non-JSON response (Status: ${response.status}): ${txt || '(empty)'}`); }
+
+                if (!response.ok) throw new Error(responseData.error || `HTTP error! Status: ${response.status}`);
+                if (responseData.error) throw new Error(responseData.error);
+
+                if (responseData.predictions && responseData.predictions.length > 0) {
+                    currentVisibleChartData = responseData.predictions;
+                    displayResults(responseData.predictions, selectedModel, selectedChartType);
+                    resultsArea.classList.add('visible');
+                } else {
+                    currentVisibleChartData = null;
+                    showError(`No prediction data found for criteria (Model: ${selectedModel}, Month: ${selectedMonth}).`);
+                }
+
+            } catch (error) {
+                currentVisibleChartData = null;
+                console.error('Error fetching/processing predictions:', error);
+                showError(`Failed to load predictions: ${error.message}`);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        function setLoadingState(isLoading) {
+            predictButton.disabled = isLoading;
+            predictButton.textContent = isLoading ? 'Loading...' : 'Get Predictions';
+            loader.style.display = isLoading ? 'block' : 'none';
+
+            if (isLoading) {
+                errorMessageDiv.style.display = 'none';
+                errorMessageDiv.textContent = '';
+                resultsArea.classList.remove('visible');
+                tableContainer.style.display = 'none';
+                chartContainer.style.display = 'none';
+                comparisonChartContainer.style.display = 'none';
+                if (predictionChart) { predictionChart.destroy(); predictionChart = null; }
+                if (comparisonChart) { comparisonChart.destroy(); comparisonChart = null; }
+                tableBody.innerHTML = '';
+                tableHeader.innerHTML = '';
+            }
+        }
+
+        function displayResults(predictions, modelType, chartType) {
+            populateTable(predictions, modelType);
+
+            if (modelType === 'comparison') {
+                const labels = predictions.map(row => row.Month);
+                const mlpData = predictions.map(row => row.Predicted_Total_Receipts_MLP);
+                const lrData = predictions.map(row => row.Predicted_Total_Receipts_LR);
+                if (chartType === 'bar') { renderComparisonBarChart(labels, mlpData, lrData); }
+                else { renderComparisonLineChart(labels, mlpData, lrData); }
+
+                comparisonChartContainer.style.display = 'block';
+                chartContainer.style.display = 'none';
+            } else {
+                const labels = predictions.map(row => row.Month);
+                const dataPoints = predictions.map(row => row.Predicted_Total_Receipts);
+
+                renderSingleChart(labels, dataPoints, chartType); 
+                chartContainer.style.display = 'block';
+                comparisonChartContainer.style.display = 'none';
+            }
+            tableContainer.style.display = 'block';
+        }
+
+        function populateTable(predictions, modelType) {
+            tableHeader.innerHTML = ''; tableBody.innerHTML = '';
+            const headerRow = document.createElement('tr');
+            if (modelType === 'comparison') {
+                headerRow.innerHTML = `<th>Month</th><th>Predicted (MLP)</th><th>Predicted (LR)</th>`;
+            } else {
+                headerRow.innerHTML = `<th>Month</th><th>Predicted Total Receipts (${modelType.toUpperCase()})</th>`;
+            }
+            tableHeader.appendChild(headerRow);
+
+            predictions.forEach(row => {
+                const tr = document.createElement('tr');
+                if (modelType === 'comparison') {
+                    tr.innerHTML = `<td>${row.Month}</td>
+                                    <td>${(row.Predicted_Total_Receipts_MLP || 0).toLocaleString()}</td>
+                                    <td>${(row.Predicted_Total_Receipts_LR || 0).toLocaleString()}</td>`;
+                } else {
+                    tr.innerHTML = `<td>${row.Month}</td><td>${(row.Predicted_Total_Receipts || 0).toLocaleString()}</td>`;
+                }
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function renderSingleChart(labels, data, chartType) {
+             const ctx = chartCanvas.getContext('2d');
+             if (predictionChart) { predictionChart.destroy(); }
+
+             const chartConfig = {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Predicted Receipts', data: data,
+                        backgroundColor: chartType === 'bar' ? primaryColorBar : primaryColorLineFill,
+                        borderColor: primaryColor,
+                        borderWidth: chartType === 'bar' ? 1 : 2,
+                        fill: chartType === 'line', tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { callback: formatTicks }}},
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: formatTooltipLabel }}},
+                    indexAxis: data.length === 1 && chartType === 'bar' ? 'y' : 'x',
+                }
+             };
+             predictionChart = new Chart(ctx, chartConfig);
+        }
+
+        function renderComparisonLineChart(labels, mlpData, lrData) {
+            const ctx = comparisonChartCanvas.getContext('2d');
+            if (comparisonChart) { comparisonChart.destroy(); }
+
+            const chartConfig = {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'MLP Predictions', data: mlpData,
+                          borderColor: primaryColor, backgroundColor: primaryColorLineFill,
+                          borderWidth: 2, fill: false, tension: 0.1 },
+                        { label: 'LR Predictions', data: lrData,
+                          borderColor: successColor, backgroundColor: successColorLineFill,
+                           borderWidth: 2, fill: false, tension: 0.1 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { callback: formatTicks }}},
+                    plugins: { legend: { display: true, position: 'top' }, tooltip: { mode: 'index', intersect: false, callbacks: { label: formatTooltipLabel }}}
+                }
+            };
+            comparisonChart = new Chart(ctx, chartConfig);
+        }
+
+        function renderComparisonBarChart(labels, mlpData, lrData) {
+            const ctx = comparisonChartCanvas.getContext('2d');
+            if (comparisonChart) { comparisonChart.destroy(); }
+
+            const chartConfig = {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'MLP Predictions', data: mlpData,
+                          backgroundColor: primaryColorBar,
+                          borderColor: primaryColor,
+                           borderWidth: 1 },
+                        { label: 'LR Predictions', data: lrData,
+                          backgroundColor: successColorBar,
+                          borderColor: successColor,
+                           borderWidth: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { callback: formatTicks }}},
+                    plugins: { legend: { display: true, position: 'top' }, tooltip: { mode: 'index', intersect: false, callbacks: { label: formatTooltipLabel }}}
+                }
+            };
+            comparisonChart = new Chart(ctx, chartConfig);
+        }
+
+        function updateVisibleChartType() {
+             const selectedChartType = chartTypeSelect.value;
+             const selectedModel = modelSelect.value;
+             if (!currentVisibleChartData || currentVisibleChartData.length === 0) return; 
+             if (selectedModel === 'comparison') {
+                 const labels = currentVisibleChartData.map(row => row.Month);
+                 const mlpData = currentVisibleChartData.map(row => row.Predicted_Total_Receipts_MLP);
+                 const lrData = currentVisibleChartData.map(row => row.Predicted_Total_Receipts_LR);
+                 if (selectedChartType === 'bar') { renderComparisonBarChart(labels, mlpData, lrData); }
+                 else { renderComparisonLineChart(labels, mlpData, lrData); }
+             } else {
+                 const labels = currentVisibleChartData.map(row => row.Month);
+                 const dataPoints = currentVisibleChartData.map(row => row.Predicted_Total_Receipts);
+                 renderSingleChart(labels, dataPoints, selectedChartType); 
+             }
+         }
+
+        // --- Utility functions for formatting ---
+        function formatTicks(value) {
+            if (Math.abs(value) >= 1e9) return (value / 1e9).toFixed(1) + 'B';
+            if (Math.abs(value) >= 1e6) return (value / 1e6).toFixed(1) + 'M';
+            if (Math.abs(value) >= 1e3) return (value / 1e3).toFixed(0) + 'K';
+            return value;
+        }
+        function formatTooltipLabel(context) {
+            let label = context.dataset.label || '';
+            if (label) { label += ': '; }
+            label += (context.parsed.y || 0).toLocaleString();
+            return label;
+        }
+
+        function showError(message) {
+             errorMessageDiv.textContent = message;
+             errorMessageDiv.style.display = 'block';
+             resultsArea.classList.remove('visible');
+             tableContainer.style.display = 'none';
+             chartContainer.style.display = 'none';
+             comparisonChartContainer.style.display = 'none';
+             currentVisibleChartData = null; 
+        }
+    </script>
+</body>
+</html>
