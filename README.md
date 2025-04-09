@@ -39,7 +39,7 @@ fetch-prompt/
 
 ## STEPS TO RUN : Running from Docker Hub 
 
-If you have Docker installed, you can run the pre-built image directly from Docker Hub (replace `yourdockerhubusername`):
+If you have Docker installed, you can run the pre-built image directly from Docker Hub :
 
 ```bash
 docker pull sanmi07/fetch-predictor:latest
@@ -55,22 +55,17 @@ This is the recommended way to run the application as it includes all dependenci
     (Ensure Docker Desktop is running)
     ```bash
     # Navigate to the project root directory first
-    cd fetch-receipt-predictor
+    cd fetch-receipts-prediction
 
-    # Option 1: Simple local tag
-    docker build -t fetch-predictor:latest .
 
-    # Option 2: Tag for Docker Hub (replace 'yourdockerhubusername')
-    # docker build -t yourdockerhubusername/fetch-predictor:latest .
+    Option 2: Tag for Docker Hub 
+    docker build -t sanmi07/fetch-predictor:latest .
     ```
 
 2.  **Run the Docker container:**
     ```bash
-    # Using the simple local tag:
-    docker run -p 5001:5000 --name fetch-app fetch-predictor:latest
-
-    # Using the Docker Hub tag (replace 'yourdockerhubusername'):
-    # docker run -p 5001:5000 --name fetch-app yourdockerhubusername/fetch-predictor:latest
+    
+    docker run -p 5001:5000 --name fetch-app yourdockerhubusername/fetch-predictor:latest
     ```
     *(Use a different host port like `-p 5002:5000` if 5001 is busy)*
 
@@ -90,8 +85,8 @@ This is the recommended way to run the application as it includes all dependenci
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/yourusername/fetch-receipt-predictor.git
-    cd fetch-receipt-predictor
+    git clone git@github.com:sanmitha-shetty/fetch-receipts-prediction.git
+    cd fetch-receipts-prediction
     ```
 2.  **(Optional) Create and activate a virtual environment:**
     ```bash
